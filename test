@@ -10,8 +10,29 @@ getgenv().AutoSummon = false
 getgenv().AutoRandom = false
 getgenv().AutoStore = false
 getgenv().NoDelay = false
+getgenv().AutoSkillZ = false
+getgenv().AutoSkillX = false
+getgenv().AutoSkillC = false
+getgenv().AutoSkillV = false
 
 local DelayTime = 1
+local remote = ReplicatedStorage:WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent")
+
+-- Hàm gửi skill
+local function useSkill(skillName)
+    local args = {
+        {
+            {
+                "Skill",
+                skillName,
+                CFrame.new(-2222.26904296875, 10.042778968811035, 1603.3192138671875, 0.93825763463974, 6.662140616953138e-09, -0.3459373712539673, -3.8237582544731197e-10, 1, 1.8221140152263615e-08, 0.3459373712539673, -1.6963845439477154e-08, 0.93825763463974)
+            },
+            "\005"
+        }
+    }
+    
+    remote:FireServer(unpack(args))
+end
 
 -- ========== CODE GIAO DIỆN (HÌNH NỀN, MÀU SẮC) ==========
 local hubColorFile = "HubColor.json"
@@ -179,7 +200,7 @@ savedTextAndBorderColor = loadColor(textAndBorderColorFile, Color3.fromRGB(255, 
 
 -- ========== TẠO WINDOW CHÍNH ==========
 local Window = OrionLib:MakeWindow({
-    Name = "System Control",
+    Name = "Mixi Jood Piece",
     HidePremium = false,
     SaveConfig = false,
     IntroEnabled = false
@@ -187,14 +208,16 @@ local Window = OrionLib:MakeWindow({
 
 -- ========== TAB MAIN (CHỨC NĂNG CHÍNH) ==========
 local MainTab = Window:MakeTab({
-    Name = "Main",
-    Icon = "rbxassetid://4483345998",
+    Name = "Click It",
+    Icon = "rbxassetid://80452964168019",
     PremiumOnly = false
 })
 
+-- Auto Summon với icon
 MainTab:AddToggle({
-    Name = "Auto Summon",
+    Name = "Auto Summon Sukuna",
     Default = false,
+    Icon = "rbxassetid://80452964168019",
     Callback = function(Value)
         getgenv().AutoSummon = Value
     end
@@ -213,9 +236,11 @@ task.spawn(function()
     end
 end)
 
+-- Auto Random với icon
 MainTab:AddToggle({
-    Name = "Auto Random",
+    Name = "Auto Random Item",
     Default = false,
+    Icon = "rbxassetid://80452964168019",
     Callback = function(Value)
         getgenv().AutoRandom = Value
     end
@@ -234,9 +259,11 @@ task.spawn(function()
     end
 end)
 
+-- Auto Store với icon
 MainTab:AddToggle({
-    Name = "Auto Store",
+    Name = "Auto Cất",
     Default = false,
+    Icon = "rbxassetid://80452964168019",
     Callback = function(Value)
         getgenv().AutoStore = Value
     end
@@ -259,9 +286,126 @@ task.spawn(function()
     end
 end)
 
+-- Auto Skill Z với icon
+MainTab:AddToggle({
+    Name = "Z",
+    Default = false,
+    Icon = "rbxassetid://80452964168019",
+    Callback = function(Value)
+        getgenv().AutoSkillZ = Value
+    end
+})
+
+-- Auto Skill X với icon
+MainTab:AddToggle({
+    Name = "X",
+    Default = false,
+    Icon = "rbxassetid://80452964168019",
+    Callback = function(Value)
+        getgenv().AutoSkillX = Value
+    end
+})
+
+-- Auto Skill C với icon
+MainTab:AddToggle({
+    Name = "C",
+    Default = false,
+    Icon = "rbxassetid://80452964168019",
+    Callback = function(Value)
+        getgenv().AutoSkillC = Value
+    end
+})
+
+-- Auto Skill V với icon
+MainTab:AddToggle({
+    Name = "V",
+    Default = false,
+    Icon = "rbxassetid://80452964168019",
+    Callback = function(Value)
+        getgenv().AutoSkillV = Value
+    end
+})
+
+-- Auto Skills Combined
+task.spawn(function()
+    while true do
+        if getgenv().AutoSkillZ or getgenv().AutoSkillX or getgenv().AutoSkillC or getgenv().AutoSkillV then
+            -- Gửi skill Z
+            if getgenv().AutoSkillZ then
+                pcall(function()
+                    useSkill("Z")
+                end)
+            end
+            
+            -- Gửi skill X  
+            if getgenv().AutoSkillX then
+                pcall(function()
+                    useSkill("X")
+                end)
+            end
+            
+            -- Gửi skill C
+            if getgenv().AutoSkillC then
+                pcall(function()
+                    useSkill("C")
+                end)
+            end
+            
+            -- Gửi skill V
+            if getgenv().AutoSkillV then
+                pcall(function()
+                    useSkill("V")
+                end)
+            end
+            
+            task.wait(getgenv().NoDelay and 0.1 or 0.5)
+        else
+            task.wait(0.2)
+        end
+    end
+end)
+
+-- Nút Test Skill Z với icon
+MainTab:AddButton({
+    Name = "Test Skill Z (1 lần)",
+    Icon = "rbxassetid://80452964168019",
+    Callback = function()
+        useSkill("Z")
+    end
+})
+
+-- Nút Test Skill X với icon
+MainTab:AddButton({
+    Name = "Test Skill X (1 lần)",  
+    Icon = "rbxassetid://80452964168019",
+    Callback = function()
+        useSkill("X")
+    end
+})
+
+-- Nút Test Skill C với icon
+MainTab:AddButton({
+    Name = "Test Skill C (1 lần)",
+    Icon = "rbxassetid://80452964168019",
+    Callback = function()
+        useSkill("C")
+    end
+})
+
+-- Nút Test Skill V với icon
+MainTab:AddButton({
+    Name = "Test Skill V (1 lần)",
+    Icon = "rbxassetid://80452964168019",
+    Callback = function()
+        useSkill("V")
+    end
+})
+
+-- No Delay với icon
 MainTab:AddToggle({
     Name = "No Delay",
     Default = false,
+    Icon = "rbxassetid://80452964168019",
     Callback = function(Value)
         getgenv().NoDelay = Value
     end
@@ -270,7 +414,7 @@ MainTab:AddToggle({
 -- ========== TAB GIAO DIỆN (HUB) ==========
 local HubTab = Window:MakeTab({
     Name = "Hub Settings",
-    Icon = "rbxassetid://4483345998",
+    Icon = "rbxassetid://80452964168019",
     PremiumOnly = false
 })
 
@@ -283,6 +427,7 @@ local hubTransparency = 0.3
 HubTab:AddToggle({
     Name = "Bật/Tắt Hình Nền (Random)",
     Default = false,
+    Icon = "rbxassetid://80452964168019",
     Callback = function(isOn)
         backgroundEnabled = isOn
         if isOn then
@@ -365,9 +510,10 @@ HubTab:AddColorpicker({
     end
 })
 
--- Nút làm mới giao diện
+-- Nút làm mới giao diện với icon
 HubTab:AddButton({
     Name = "Làm Mới Giao Diện",
+    Icon = "rbxassetid://80452964168019",
     Callback = function()
         applyHubColor(savedHubColor)
         applyTextAndBorderColor(savedTextAndBorderColor)
@@ -378,9 +524,10 @@ HubTab:AddButton({
     end
 })
 
--- Nút xóa hình nền
+-- Nút xóa hình nền với icon
 HubTab:AddButton({
     Name = "🗑️ Xóa Hình Nền",
+    Icon = "rbxassetid://80452964168019",
     Callback = function()
         resetBackground()
         backgroundEnabled = false
