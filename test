@@ -85,11 +85,18 @@ local function applyHubTransparency(transparency)
     end
 end
 
--- ========== ID HÌNH NỀN MỚI (ĐÃ XÓA CŨ) ==========
+-- ========== ID HÌNH NỀN (CŨ + MỚI) ==========
 local BackgroundImages = {
-    "79464702411655",  -- Ảnh mới 1
-    "78188111267182",  -- Ảnh mới 2
-    "87324819549778"   -- Ảnh mới 3
+    -- ID cũ (3 ảnh đầu)
+    "79464702411655",  -- Ảnh 1
+    "78188111267182",  -- Ảnh 2
+    "87324819549778",  -- Ảnh 3
+    
+    -- ID mới thêm (4 ảnh)
+    "106183662263394", -- Ảnh 4 (mới)
+    "101124835052371", -- Ảnh 5 (mới)
+    "104282201865978", -- Ảnh 6 (mới)
+    "109827889408368"  -- Ảnh 7 (mới)
 }
 
 -- Hàm chọn ngẫu nhiên ID hình nền
@@ -272,9 +279,9 @@ local backgroundEnabled = false
 local currentTransparency = 0.7
 local hubTransparency = 0.3
 
--- Toggle bật/tắt hình nền (Dùng ảnh mới)
+-- Toggle bật/tắt hình nền (Random từ 7 ảnh)
 HubTab:AddToggle({
-    Name = "Bật/Tắt Hình Nền",
+    Name = "Bật/Tắt Hình Nền (Random)",
     Default = false,
     Callback = function(isOn)
         backgroundEnabled = isOn
@@ -286,13 +293,17 @@ HubTab:AddToggle({
     end
 })
 
--- Nút chọn ảnh cụ thể (Thêm dropdown để chọn 3 ảnh mới)
+-- Dropdown chọn ảnh cụ thể (Đã cập nhật đủ 7 ảnh)
 HubTab:AddDropdown({
-    Name = "Chọn Ảnh Nền",
+    Name = "Chọn Ảnh Nền Cụ Thể",
     Options = {
         "79464702411655 - Ảnh 1",
         "78188111267182 - Ảnh 2",
-        "87324819549778 - Ảnh 3"
+        "87324819549778 - Ảnh 3",
+        "106183662263394 - Ảnh 4 (Mới)",
+        "101124835052371 - Ảnh 5 (Mới)",
+        "104282201865978 - Ảnh 6 (Mới)",
+        "109827889408368 - Ảnh 7 (Mới)"
     },
     Default = "79464702411655 - Ảnh 1",
     Callback = function(value)
@@ -364,6 +375,15 @@ HubTab:AddButton({
         if backgroundEnabled then
             applyHubBackground(getRandomImageId(), currentTransparency)
         end
+    end
+})
+
+-- Nút xóa hình nền
+HubTab:AddButton({
+    Name = "🗑️ Xóa Hình Nền",
+    Callback = function()
+        resetBackground()
+        backgroundEnabled = false
     end
 })
 
