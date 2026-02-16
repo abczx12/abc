@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace") -- Thêm dòng này
 
 getgenv().AutoSummon = false
 getgenv().AutoRandom = false
@@ -14,6 +15,15 @@ getgenv().AutoSkillZ = false
 getgenv().AutoSkillX = false
 getgenv().AutoSkillC = false
 getgenv().AutoSkillV = false
+
+-- Biến cho Effect Rainbow
+getgenv().RainbowEffect = false
+local rainbowColors = {
+    Color3.fromRGB(255, 0, 0), Color3.fromRGB(255, 127, 0), Color3.fromRGB(255, 255, 0),
+    Color3.fromRGB(0, 255, 0), Color3.fromRGB(0, 255, 255), Color3.fromRGB(0, 0, 255),
+    Color3.fromRGB(128, 0, 128), Color3.fromRGB(255, 182, 193), Color3.fromRGB(255, 218, 185),
+    Color3.fromRGB(255, 255, 224), Color3.fromRGB(200, 255, 200), Color3.fromRGB(200, 230, 255),
+}
 
 local DelayTime = 1
 local remote = ReplicatedStorage:WaitForChild("BridgeNet2"):WaitForChild("dataRemoteEvent")
@@ -32,6 +42,84 @@ local function useSkill(skillName)
     }
     
     remote:FireServer(unpack(args))
+end
+
+-- ========== HÀM RAINBOW EFFECT ==========
+local function makeEffectRainbow(obj)
+    if not getgenv().RainbowEffect then return end
+    
+    local c = rainbowColors[math.random(#rainbowColors)]
+    pcall(function()
+        if obj:IsA("ParticleEmitter") then
+            obj.Color = ColorSequence.new(c)
+        elseif obj:IsA("Fire") then
+            obj.Color = c
+            obj.SecondaryColor = c
+        elseif obj:IsA("Sparkles") then
+            obj.SparkleColor = c
+        elseif obj:IsA("Trail") then
+            obj.Color = ColorSequence.new(c)
+        elseif obj:IsA("Beam") then
+            obj.Color = ColorSequence.new(c)
+        elseif obj:IsA("PointLight") or obj:IsA("SurfaceLight") or obj:IsA("SpotLight") then
+            obj.Color = c
+        elseif obj:IsA("BasePart") then
+            obj.Color = c
+            obj.Material = Enum.Material.Neon
+        end
+    end)
+end
+
+-- Hàm quét effect hiện có
+local function scanExistingEffects()
+    if not getgenv().RainbowEffect then return end
+    
+    -- Quét Workspace
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        makeEffectRainbow(obj)
+    end
+    
+    -- Quét PlayerGui
+    for _, player in pairs(Players:GetPlayers()) do
+        if player.PlayerGui then
+            for _, obj in pairs(player.PlayerGui:GetDescendants()) do
+                makeEffectRainbow(obj)
+            end
+        end
+    end
+end
+
+-- Hàm bật/tắt rainbow effect
+local function toggleRainbowEffect(state)
+    getgenv().RainbowEffect = state
+    
+    if state then
+        -- Quét effect hiện có
+        scanExistingEffects()
+        
+        -- Bắt effect mới xuất hiện
+        Workspace.DescendantAdded:Connect(function(obj)
+            makeEffectRainbow(obj)
+        end)
+        
+        for _, player in pairs(Players:GetPlayers()) do
+            if player.PlayerGui then
+                player.PlayerGui.DescendantAdded:Connect(function(obj)
+                    makeEffectRainbow(obj)
+                end)
+            end
+        end
+        
+        Players.PlayerAdded:Connect(function(player)
+            player:WaitForChild("PlayerGui").DescendantAdded:Connect(function(obj)
+                makeEffectRainbow(obj)
+            end)
+        end)
+        
+        print("🌈 Rainbow Effect ĐÃ BẬT!")
+    else
+        print("⚫ Rainbow Effect ĐÃ TẮT!")
+    end
 end
 
 -- ========== CODE GIAO DIỆN (HÌNH NỀN, MÀU SẮC) ==========
@@ -106,18 +194,15 @@ local function applyHubTransparency(transparency)
     end
 end
 
--- ========== ID HÌNH NỀN (CŨ + MỚI) ==========
+-- ========== ID HÌNH NỀN ==========
 local BackgroundImages = {
-    -- ID cũ (3 ảnh đầu)
-    "79464702411655",  -- Ảnh 1
-    "78188111267182",  -- Ảnh 2
-    "87324819549778",  -- Ảnh 3
-    
-    -- ID mới thêm (4 ảnh)
-    "106183662263394", -- Ảnh 4 (mới)
-    "101124835052371", -- Ảnh 5 (mới)
-    "104282201865978", -- Ảnh 6 (mới)
-    "109827889408368"  -- Ảnh 7 (mới)
+    "79464702411655",
+    "78188111267182",
+    "87324819549778",
+    "106183662263394",
+    "101124835052371",
+    "104282201865978",
+    "109827889408368"
 }
 
 -- Hàm chọn ngẫu nhiên ID hình nền
@@ -410,6 +495,52 @@ MainTab:AddToggle({
         getgenv().NoDelay = Value
     end
 })
+
+-- ========== TAB RAINBOW EFFECT (MỚI THÊM) ==========
+local RainbowTab = Window:MakeTab({
+    Name = "Effect Rainbow All Game",
+    Icon = "rbxassetid://80452964168019",
+    PremiumOnly = false
+})
+
+-- Toggle bật/tắt rainbow effect
+RainbowTab:AddToggle({
+    Name = "🌈 Bật/Tắt Rainbow Effect",
+    Default = false,
+    Icon = "rbxassetid://80452964168019",
+    Callback = function(Value)
+        toggleRainbowEffect(Value)
+    end
+})
+
+-- Nút quét lại effect
+RainbowTab:AddButton({
+    Name = "🔄 Quét Lại Effect",
+    Icon = "rbxassetid://80452964168019",
+    Callback = function()
+        if getgenv().RainbowEffect then
+            scanExistingEffects()
+            OrionLib:MakeNotification({
+                Name = "Rainbow Effect",
+                Content = "Đã quét lại tất cả effect!",
+                Image = "rbxassetid://80452964168019",
+                Time = 3
+            })
+        else
+            OrionLib:MakeNotification({
+                Name = "Rainbow Effect",
+                Content = "Vui lòng bật Rainbow Effect trước!",
+                Image = "rbxassetid://80452964168019",
+                Time = 3
+            })
+        end
+    end
+})
+
+-- Label thông báo
+RainbowTab:AddLabel("🎨 Màu sắc sẽ tự động đổi khi effect mới xuất hiện")
+RainbowTab:AddLabel("⚡ Hỗ trợ: ParticleEmitter, Fire, Sparkles, Trail, Beam, Light...")
+RainbowTab:AddLabel("📌 Không lag - chỉ xử lý effect mới")
 
 -- ========== TAB GIAO DIỆN (HUB) ==========
 local HubTab = Window:MakeTab({
