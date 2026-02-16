@@ -5,7 +5,7 @@ local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace") -- Thêm dòng này
+local Workspace = game:GetService("Workspace")
 
 getgenv().AutoSummon = false
 getgenv().AutoRandom = false
@@ -44,7 +44,7 @@ local function useSkill(skillName)
     remote:FireServer(unpack(args))
 end
 
--- ========== HÀM RAINBOW EFFECT ==========
+-- ========== HÀM RAINBOW EFFECT (CHỈ EFFECT MỚI) ==========
 local function makeEffectRainbow(obj)
     if not getgenv().RainbowEffect then return end
     
@@ -63,62 +63,70 @@ local function makeEffectRainbow(obj)
             obj.Color = ColorSequence.new(c)
         elseif obj:IsA("PointLight") or obj:IsA("SurfaceLight") or obj:IsA("SpotLight") then
             obj.Color = c
-        elseif obj:IsA("BasePart") then
-            obj.Color = c
-            obj.Material = Enum.Material.Neon
         end
     end)
 end
 
--- Hàm quét effect hiện có
-local function scanExistingEffects()
-    if not getgenv().RainbowEffect then return end
-    
-    -- Quét Workspace
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        makeEffectRainbow(obj)
-    end
-    
-    -- Quét PlayerGui
-    for _, player in pairs(Players:GetPlayers()) do
-        if player.PlayerGui then
-            for _, obj in pairs(player.PlayerGui:GetDescendants()) do
-                makeEffectRainbow(obj)
-            end
-        end
-    end
-end
-
--- Hàm bật/tắt rainbow effect
+-- Hàm bật/tắt (CHỈ bắt effect mới, KHÔNG quét effect cũ)
 local function toggleRainbowEffect(state)
     getgenv().RainbowEffect = state
     
     if state then
-        -- Quét effect hiện có
-        scanExistingEffects()
-        
-        -- Bắt effect mới xuất hiện
-        Workspace.DescendantAdded:Connect(function(obj)
-            makeEffectRainbow(obj)
-        end)
-        
-        for _, player in pairs(Players:GetPlayers()) do
-            if player.PlayerGui then
-                player.PlayerGui.DescendantAdded:Connect(function(obj)
-                    makeEffectRainbow(obj)
-                end)
+        -- Hủy connections cũ nếu có
+        if _G.RainbowConnections then
+            for _, conn in ipairs(_G.RainbowConnections) do
+                pcall(function() conn:Disconnect() end)
             end
         end
         
-        Players.PlayerAdded:Connect(function(player)
+        _G.RainbowConnections = {}
+        
+        -- CHỈ bắt effect mới xuất hiện trong Workspace
+        local conn1 = Workspace.DescendantAdded:Connect(function(obj)
+            makeEffectRainbow(obj)
+        end)
+        table.insert(_G.RainbowConnections, conn1)
+        
+        -- Bắt effect mới trong PlayerGui của tất cả players
+        for _, player in pairs(Players:GetPlayers()) do
+            if player.PlayerGui then
+                local conn = player.PlayerGui.DescendantAdded:Connect(function(obj)
+                    makeEffectRainbow(obj)
+                end)
+                table.insert(_G.RainbowConnections, conn)
+            end
+        end
+        
+        -- Bắt khi có player mới join
+        local conn2 = Players.PlayerAdded:Connect(function(player)
             player:WaitForChild("PlayerGui").DescendantAdded:Connect(function(obj)
                 makeEffectRainbow(obj)
             end)
         end)
+        table.insert(_G.RainbowConnections, conn2)
         
-        print("🌈 Rainbow Effect ĐÃ BẬT!")
+        OrionLib:MakeNotification({
+            Name = "Rainbow Effect",
+            Content = "✅ ĐÃ BẬT - Chỉ effect mới có màu!",
+            Image = "rbxassetid://80452964168019",
+            Time = 3
+        })
+        
     else
-        print("⚫ Rainbow Effect ĐÃ TẮT!")
+        -- Hủy tất cả connections khi tắt
+        if _G.RainbowConnections then
+            for _, conn in ipairs(_G.RainbowConnections) do
+                pcall(function() conn:Disconnect() end)
+            end
+            _G.RainbowConnections = nil
+        end
+        
+        OrionLib:MakeNotification({
+            Name = "Rainbow Effect",
+            Content = "⭕ ĐÃ TẮT",
+            Image = "rbxassetid://80452964168019",
+            Time = 3
+        })
     end
 end
 
@@ -415,34 +423,18 @@ MainTab:AddToggle({
 task.spawn(function()
     while true do
         if getgenv().AutoSkillZ or getgenv().AutoSkillX or getgenv().AutoSkillC or getgenv().AutoSkillV then
-            -- Gửi skill Z
             if getgenv().AutoSkillZ then
-                pcall(function()
-                    useSkill("Z")
-                end)
+                pcall(function() useSkill("Z") end)
             end
-            
-            -- Gửi skill X  
             if getgenv().AutoSkillX then
-                pcall(function()
-                    useSkill("X")
-                end)
+                pcall(function() useSkill("X") end)
             end
-            
-            -- Gửi skill C
             if getgenv().AutoSkillC then
-                pcall(function()
-                    useSkill("C")
-                end)
+                pcall(function() useSkill("C") end)
             end
-            
-            -- Gửi skill V
             if getgenv().AutoSkillV then
-                pcall(function()
-                    useSkill("V")
-                end)
+                pcall(function() useSkill("V") end)
             end
-            
             task.wait(getgenv().NoDelay and 0.1 or 0.5)
         else
             task.wait(0.2)
@@ -450,62 +442,49 @@ task.spawn(function()
     end
 end)
 
--- Nút Test Skill Z với icon
+-- Nút Test Skill
 MainTab:AddButton({
     Name = "Test Skill Z (1 lần)",
     Icon = "rbxassetid://80452964168019",
-    Callback = function()
-        useSkill("Z")
-    end
+    Callback = function() useSkill("Z") end
 })
 
--- Nút Test Skill X với icon
 MainTab:AddButton({
     Name = "Test Skill X (1 lần)",  
     Icon = "rbxassetid://80452964168019",
-    Callback = function()
-        useSkill("X")
-    end
+    Callback = function() useSkill("X") end
 })
 
--- Nút Test Skill C với icon
 MainTab:AddButton({
     Name = "Test Skill C (1 lần)",
     Icon = "rbxassetid://80452964168019",
-    Callback = function()
-        useSkill("C")
-    end
+    Callback = function() useSkill("C") end
 })
 
--- Nút Test Skill V với icon
 MainTab:AddButton({
     Name = "Test Skill V (1 lần)",
     Icon = "rbxassetid://80452964168019",
-    Callback = function()
-        useSkill("V")
-    end
+    Callback = function() useSkill("V") end
 })
 
--- No Delay với icon
+-- No Delay
 MainTab:AddToggle({
     Name = "No Delay",
     Default = false,
     Icon = "rbxassetid://80452964168019",
-    Callback = function(Value)
-        getgenv().NoDelay = Value
-    end
+    Callback = function(Value) getgenv().NoDelay = Value end
 })
 
--- ========== TAB RAINBOW EFFECT (MỚI THÊM) ==========
+-- ========== TAB RAINBOW EFFECT (CHỈ EFFECT MỚI) ==========
 local RainbowTab = Window:MakeTab({
-    Name = "Effect Rainbow All Game",
+    Name = "Đổi Màu LGBT",
     Icon = "rbxassetid://80452964168019",
     PremiumOnly = false
 })
 
--- Toggle bật/tắt rainbow effect
+-- Toggle bật/tắt rainbow effect (CHỈ EFFECT MỚI)
 RainbowTab:AddToggle({
-    Name = "🌈 Bật/Tắt Rainbow Effect",
+    Name = "All skill=LGBT",
     Default = false,
     Icon = "rbxassetid://80452964168019",
     Callback = function(Value)
@@ -513,34 +492,10 @@ RainbowTab:AddToggle({
     end
 })
 
--- Nút quét lại effect
-RainbowTab:AddButton({
-    Name = "🔄 Quét Lại Effect",
-    Icon = "rbxassetid://80452964168019",
-    Callback = function()
-        if getgenv().RainbowEffect then
-            scanExistingEffects()
-            OrionLib:MakeNotification({
-                Name = "Rainbow Effect",
-                Content = "Đã quét lại tất cả effect!",
-                Image = "rbxassetid://80452964168019",
-                Time = 3
-            })
-        else
-            OrionLib:MakeNotification({
-                Name = "Rainbow Effect",
-                Content = "Vui lòng bật Rainbow Effect trước!",
-                Image = "rbxassetid://80452964168019",
-                Time = 3
-            })
-        end
-    end
-})
-
 -- Label thông báo
-RainbowTab:AddLabel("🎨 Màu sắc sẽ tự động đổi khi effect mới xuất hiện")
-RainbowTab:AddLabel("⚡ Hỗ trợ: ParticleEmitter, Fire, Sparkles, Trail, Beam, Light...")
-RainbowTab:AddLabel("📌 Không lag - chỉ xử lý effect mới")
+RainbowTab:AddLabel("🎨 CHỈ effect mới xuất hiện mới đổi màu")
+RainbowTab:AddLabel("⚡ Effect có sẵn sẽ GIỮ NGUYÊN")
+RainbowTab:AddLabel("📌 Hỗ trợ: ParticleEmitter, Fire, Sparkles, Trail, Beam, Light...")
 
 -- ========== TAB GIAO DIỆN (HUB) ==========
 local HubTab = Window:MakeTab({
@@ -549,12 +504,11 @@ local HubTab = Window:MakeTab({
     PremiumOnly = false
 })
 
--- Biến lưu trạng thái hình nền
 local backgroundEnabled = false
 local currentTransparency = 0.7
 local hubTransparency = 0.3
 
--- Toggle bật/tắt hình nền (Random từ 7 ảnh)
+-- Toggle bật/tắt hình nền
 HubTab:AddToggle({
     Name = "Bật/Tắt Hình Nền (Random)",
     Default = false,
@@ -569,7 +523,7 @@ HubTab:AddToggle({
     end
 })
 
--- Dropdown chọn ảnh cụ thể (Đã cập nhật đủ 7 ảnh)
+-- Dropdown chọn ảnh
 HubTab:AddDropdown({
     Name = "Chọn Ảnh Nền Cụ Thể",
     Options = {
@@ -591,7 +545,7 @@ HubTab:AddDropdown({
     end
 })
 
--- Slider điều chỉnh độ trong suốt của Hub
+-- Slider độ trong suốt Hub
 HubTab:AddSlider({
     Name = "Độ Trong Suốt Hub",
     Min = 0.0,
@@ -604,7 +558,7 @@ HubTab:AddSlider({
     end
 })
 
--- Slider điều chỉnh độ rõ của hình nền
+-- Slider độ rõ hình nền
 HubTab:AddSlider({
     Name = "Độ Rõ Hình Nền",
     Min = 0.1,
@@ -641,7 +595,7 @@ HubTab:AddColorpicker({
     end
 })
 
--- Nút làm mới giao diện với icon
+-- Nút làm mới giao diện
 HubTab:AddButton({
     Name = "Làm Mới Giao Diện",
     Icon = "rbxassetid://80452964168019",
@@ -655,9 +609,9 @@ HubTab:AddButton({
     end
 })
 
--- Nút xóa hình nền với icon
+-- Nút xóa hình nền
 HubTab:AddButton({
-    Name = " Xóa Hình Nền",
+    Name = "🗑️ Xóa Hình Nền",
     Icon = "rbxassetid://80452964168019",
     Callback = function()
         resetBackground()
@@ -666,7 +620,7 @@ HubTab:AddButton({
 })
 
 -- ========== ÁP DỤNG MÀU KHI KHỞI ĐỘNG ==========
-task.wait(1) -- Đợi OrionLib load xong
+task.wait(1)
 applyHubColor(savedHubColor)
 applyTextAndBorderColor(savedTextAndBorderColor)
 applyHubTransparency(hubTransparency)
