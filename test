@@ -657,7 +657,7 @@ HubTab:AddButton({
 
 -- Nút xóa hình nền với icon
 HubTab:AddButton({
-    Name = "🗑️ Xóa Hình Nền",
+    Name = " Xóa Hình Nền",
     Icon = "rbxassetid://80452964168019",
     Callback = function()
         resetBackground()
