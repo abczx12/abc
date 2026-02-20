@@ -6,6 +6,94 @@ local Player = Players.LocalPlayer
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+local VirtualUser = game:GetService("VirtualUser")
+
+-- ========== HỆ THỐNG KEY API ==========
+local API_URL = "http://192.168.1.100:5000/verify"  -- Thay IP máy mày
+
+-- Hàm lấy HWID
+local function getHWID()
+    local success, hwid = pcall(function()
+        if gethwid then
+            return gethwid()
+        end
+        local userId = Player.UserId
+        local placeId = game.PlaceId
+        local raw = tostring(userId) .. tostring(placeId) .. tostring(tick())
+        return HttpService:MD5(raw)
+    end)
+    return success and hwid or "UNKNOWN_HWID"
+end
+
+-- Hàm kick
+local function kickPlayer(reason)
+    pcall(function()
+        game:GetService("TeleportService"):Teleport(game.PlaceId)
+        if Player.Character then
+            Player.Character:Destroy()
+        end
+    end)
+    OrionLib:MakeNotification({
+        Name = "XÁC THỰC THẤT BẠI",
+        Content = reason or "Key không hợp lệ!",
+        Time = 5
+    })
+    wait(2)
+end
+
+-- Hàm xác thực key
+local function verifyKey()
+    local userKey = getgenv().Key
+    
+    if not userKey or userKey == "" then
+        OrionLib:MakeNotification({
+            Name = "LỖI KEY",
+            Content = "Vui lòng nhập Key!\ngetgenv().Key = 'keycủabạn'",
+            Time = 5
+        })
+        return false
+    end
+
+    local hwid = getHWID()
+    
+    local success, result = pcall(function()
+        local data = {
+            key = userKey,
+            hwid = hwid,
+            game = "Mixi Jood Piece"
+        }
+        local response = request({
+            Url = API_URL,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode(data)
+        })
+        if response and response.Success then
+            return HttpService:JSONDecode(response.Body)
+        end
+    end)
+    
+    if success and result and result.success then
+        print("✅ Xác thực thành công!")
+        OrionLib:MakeNotification({
+            Name = "THÀNH CÔNG",
+            Content = "Đã xác thực key!",
+            Time = 3
+        })
+        return true
+    else
+        local reason = (result and result.message) or "Key không hợp lệ!"
+        kickPlayer(reason)
+        return false
+    end
+end
+
+-- Chạy xác thực
+local verified = verifyKey()
+if not verified then
+    return
+end
+-- ========== KẾT THÚC HỆ THỐNG KEY ==========
 
 getgenv().AutoSummon = false
 getgenv().AutoRandom = false
@@ -40,14 +128,12 @@ local function useSkill(skillName)
             "\005"
         }
     }
-    
     remote:FireServer(unpack(args))
 end
 
--- ========== HÀM RAINBOW EFFECT (CHỈ EFFECT MỚI) ==========
+-- ========== HÀM RAINBOW EFFECT ==========
 local function makeEffectRainbow(obj)
     if not getgenv().RainbowEffect then return end
-    
     local c = rainbowColors[math.random(#rainbowColors)]
     pcall(function()
         if obj:IsA("ParticleEmitter") then
@@ -67,27 +153,20 @@ local function makeEffectRainbow(obj)
     end)
 end
 
--- Hàm bật/tắt (CHỈ bắt effect mới, KHÔNG quét effect cũ)
+-- Hàm bật/tắt Rainbow
 local function toggleRainbowEffect(state)
     getgenv().RainbowEffect = state
-    
     if state then
-        -- Hủy connections cũ nếu có
         if _G.RainbowConnections then
             for _, conn in ipairs(_G.RainbowConnections) do
                 pcall(function() conn:Disconnect() end)
             end
         end
-        
         _G.RainbowConnections = {}
-        
-        -- CHỈ bắt effect mới xuất hiện trong Workspace
         local conn1 = Workspace.DescendantAdded:Connect(function(obj)
             makeEffectRainbow(obj)
         end)
         table.insert(_G.RainbowConnections, conn1)
-        
-        -- Bắt effect mới trong PlayerGui của tất cả players
         for _, player in pairs(Players:GetPlayers()) do
             if player.PlayerGui then
                 local conn = player.PlayerGui.DescendantAdded:Connect(function(obj)
@@ -96,31 +175,25 @@ local function toggleRainbowEffect(state)
                 table.insert(_G.RainbowConnections, conn)
             end
         end
-        
-        -- Bắt khi có player mới join
         local conn2 = Players.PlayerAdded:Connect(function(player)
             player:WaitForChild("PlayerGui").DescendantAdded:Connect(function(obj)
                 makeEffectRainbow(obj)
             end)
         end)
         table.insert(_G.RainbowConnections, conn2)
-        
         OrionLib:MakeNotification({
             Name = "Rainbow Effect",
             Content = "✅ ĐÃ BẬT - Chỉ effect mới có màu!",
             Image = "rbxassetid://80452964168019",
             Time = 3
         })
-        
     else
-        -- Hủy tất cả connections khi tắt
         if _G.RainbowConnections then
             for _, conn in ipairs(_G.RainbowConnections) do
                 pcall(function() conn:Disconnect() end)
             end
             _G.RainbowConnections = nil
         end
-        
         OrionLib:MakeNotification({
             Name = "Rainbow Effect",
             Content = "⭕ ĐÃ TẮT",
@@ -130,20 +203,18 @@ local function toggleRainbowEffect(state)
     end
 end
 
--- ========== CODE GIAO DIỆN (HÌNH NỀN, MÀU SẮC) ==========
+-- ========== CODE GIAO DIỆN ==========
 local hubColorFile = "HubColor.json"
 local textAndBorderColorFile = "TextAndBorderColor.json"
 local savedHubColor = nil
 local savedTextAndBorderColor = nil
 
--- Hàm lưu màu vào file
 local function saveColor(color, path)
     local colorData = { r = color.R, g = color.G, b = color.B }
     local jsonData = HttpService:JSONEncode(colorData)
     writefile(path, jsonData)
 end
 
--- Hàm tải màu từ file
 local function loadColor(path, defaultColor)
     if isfile(path) then
         local jsonData = readfile(path)
@@ -154,7 +225,6 @@ local function loadColor(path, defaultColor)
     end
 end
 
--- Hàm áp dụng màu nền cho Hub
 local function applyHubColor(hubColor)
     if gethui():FindFirstChild("Orion") then
         for _, i in pairs(gethui():GetChildren()) do
@@ -169,7 +239,6 @@ local function applyHubColor(hubColor)
     end
 end
 
--- Hàm áp dụng màu viền và chữ
 local function applyTextAndBorderColor(color)
     if gethui():FindFirstChild("Orion") then
         for _, i in pairs(gethui():GetChildren()) do
@@ -187,7 +256,6 @@ local function applyTextAndBorderColor(color)
     end
 end
 
--- Hàm áp dụng độ trong suốt của Hub
 local function applyHubTransparency(transparency)
     if gethui():FindFirstChild("Orion") then
         for _, gui in pairs(gethui():GetChildren()) do
@@ -202,7 +270,6 @@ local function applyHubTransparency(transparency)
     end
 end
 
--- ========== ID HÌNH NỀN ==========
 local BackgroundImages = {
     "79464702411655",
     "78188111267182",
@@ -213,19 +280,16 @@ local BackgroundImages = {
     "109827889408368"
 }
 
--- Hàm chọn ngẫu nhiên ID hình nền
 local function getRandomImageId()
     return BackgroundImages[math.random(1, #BackgroundImages)]
 end
 
--- Hàm áp dụng hình nền
 local function applyHubBackground(imageId, transparency)
     if gethui():FindFirstChild("Orion") then
         for _, gui in pairs(gethui():GetChildren()) do
             if gui.Name == "Orion" then
                 local largestFrame = nil
                 local maxSize = 0
-
                 for _, frame in pairs(gui:GetDescendants()) do
                     if frame:IsA("Frame") and frame.BackgroundTransparency < 1 then
                         local frameSize = frame.AbsoluteSize.X * frame.AbsoluteSize.Y
@@ -235,12 +299,10 @@ local function applyHubBackground(imageId, transparency)
                         end
                     end
                 end
-
                 if largestFrame then
                     if largestFrame:FindFirstChild("HubBackground") then
                         largestFrame:FindFirstChild("HubBackground"):Destroy()
                     end
-
                     local background = Instance.new("ImageLabel")
                     background.Name = "HubBackground"
                     background.Parent = largestFrame
@@ -257,7 +319,6 @@ local function applyHubBackground(imageId, transparency)
     end
 end
 
--- Hàm xóa hình nền
 local function resetBackground()
     if gethui():FindFirstChild("Orion") then
         for _, gui in pairs(gethui():GetChildren()) do
@@ -272,7 +333,6 @@ local function resetBackground()
     end
 end
 
--- Hàm áp dụng độ trong suốt của hình nền
 local function applyBackgroundTransparency(transparency)
     if gethui():FindFirstChild("Orion") then
         for _, gui in pairs(gethui():GetChildren()) do
@@ -287,11 +347,9 @@ local function applyBackgroundTransparency(transparency)
     end
 end
 
--- Tải màu đã lưu
 savedHubColor = loadColor(hubColorFile, Color3.fromRGB(30, 30, 30))
 savedTextAndBorderColor = loadColor(textAndBorderColorFile, Color3.fromRGB(255, 255, 255))
 
--- ========== TẠO WINDOW CHÍNH ==========
 local Window = OrionLib:MakeWindow({
     Name = "Mixi Jood Piece",
     HidePremium = false,
@@ -299,14 +357,12 @@ local Window = OrionLib:MakeWindow({
     IntroEnabled = false
 })
 
--- ========== TAB MAIN (CHỨC NĂNG CHÍNH) ==========
 local MainTab = Window:MakeTab({
     Name = "Click It",
     Icon = "rbxassetid://80452964168019",
     PremiumOnly = false
 })
 
--- Auto Summon với icon
 MainTab:AddToggle({
     Name = "Auto Summon Sukuna",
     Default = false,
@@ -329,7 +385,6 @@ task.spawn(function()
     end
 end)
 
--- Auto Random với icon
 MainTab:AddToggle({
     Name = "Auto Random Item",
     Default = false,
@@ -352,7 +407,6 @@ task.spawn(function()
     end
 end)
 
--- Auto Store với icon
 MainTab:AddToggle({
     Name = "Auto Cất",
     Default = false,
@@ -379,7 +433,6 @@ task.spawn(function()
     end
 end)
 
--- Auto Skill Z với icon
 MainTab:AddToggle({
     Name = "Z",
     Default = false,
@@ -389,7 +442,6 @@ MainTab:AddToggle({
     end
 })
 
--- Auto Skill X với icon
 MainTab:AddToggle({
     Name = "X",
     Default = false,
@@ -399,7 +451,6 @@ MainTab:AddToggle({
     end
 })
 
--- Auto Skill C với icon
 MainTab:AddToggle({
     Name = "C",
     Default = false,
@@ -409,7 +460,6 @@ MainTab:AddToggle({
     end
 })
 
--- Auto Skill V với icon
 MainTab:AddToggle({
     Name = "V",
     Default = false,
@@ -419,7 +469,6 @@ MainTab:AddToggle({
     end
 })
 
--- Auto Skills Combined
 task.spawn(function()
     while true do
         if getgenv().AutoSkillZ or getgenv().AutoSkillX or getgenv().AutoSkillC or getgenv().AutoSkillV then
@@ -442,7 +491,6 @@ task.spawn(function()
     end
 end)
 
--- Nút Test Skill
 MainTab:AddButton({
     Name = "Test Skill Z (1 lần)",
     Icon = "rbxassetid://80452964168019",
@@ -467,7 +515,6 @@ MainTab:AddButton({
     Callback = function() useSkill("V") end
 })
 
--- No Delay
 MainTab:AddToggle({
     Name = "No Delay",
     Default = false,
@@ -475,16 +522,14 @@ MainTab:AddToggle({
     Callback = function(Value) getgenv().NoDelay = Value end
 })
 
--- ========== TAB RAINBOW EFFECT (CHỈ EFFECT MỚI) ==========
 local RainbowTab = Window:MakeTab({
-    Name = "Đổi Màu LGBT",
+    Name = "Effect Rainbow All Game",
     Icon = "rbxassetid://80452964168019",
     PremiumOnly = false
 })
 
--- Toggle bật/tắt rainbow effect (CHỈ EFFECT MỚI)
 RainbowTab:AddToggle({
-    Name = "All skill=LGBT",
+    Name = "🌈 Bật/Tắt Rainbow Effect (Chỉ effect mới)",
     Default = false,
     Icon = "rbxassetid://80452964168019",
     Callback = function(Value)
@@ -492,12 +537,9 @@ RainbowTab:AddToggle({
     end
 })
 
--- Label thông báo
 RainbowTab:AddLabel("🎨 CHỈ effect mới xuất hiện mới đổi màu")
 RainbowTab:AddLabel("⚡ Effect có sẵn sẽ GIỮ NGUYÊN")
-RainbowTab:AddLabel("📌 Hỗ trợ: ParticleEmitter, Fire, Sparkles, Trail, Beam, Light...")
 
--- ========== TAB GIAO DIỆN (HUB) ==========
 local HubTab = Window:MakeTab({
     Name = "Hub Settings",
     Icon = "rbxassetid://80452964168019",
@@ -508,7 +550,6 @@ local backgroundEnabled = false
 local currentTransparency = 0.7
 local hubTransparency = 0.3
 
--- Toggle bật/tắt hình nền
 HubTab:AddToggle({
     Name = "Bật/Tắt Hình Nền (Random)",
     Default = false,
@@ -523,17 +564,16 @@ HubTab:AddToggle({
     end
 })
 
--- Dropdown chọn ảnh
 HubTab:AddDropdown({
     Name = "Chọn Ảnh Nền Cụ Thể",
     Options = {
         "79464702411655 - Ảnh 1",
         "78188111267182 - Ảnh 2",
         "87324819549778 - Ảnh 3",
-        "106183662263394 - Ảnh 4 (Mới)",
-        "101124835052371 - Ảnh 5 (Mới)",
-        "104282201865978 - Ảnh 6 (Mới)",
-        "109827889408368 - Ảnh 7 (Mới)"
+        "106183662263394 - Ảnh 4",
+        "101124835052371 - Ảnh 5",
+        "104282201865978 - Ảnh 6",
+        "109827889408368 - Ảnh 7"
     },
     Default = "79464702411655 - Ảnh 1",
     Callback = function(value)
@@ -545,7 +585,6 @@ HubTab:AddDropdown({
     end
 })
 
--- Slider độ trong suốt Hub
 HubTab:AddSlider({
     Name = "Độ Trong Suốt Hub",
     Min = 0.0,
@@ -558,7 +597,6 @@ HubTab:AddSlider({
     end
 })
 
--- Slider độ rõ hình nền
 HubTab:AddSlider({
     Name = "Độ Rõ Hình Nền",
     Min = 0.1,
@@ -573,7 +611,6 @@ HubTab:AddSlider({
     end
 })
 
--- Color Picker đổi màu Hub
 HubTab:AddColorpicker({
     Name = "Đổi Màu Hub",
     Default = savedHubColor,
@@ -584,7 +621,6 @@ HubTab:AddColorpicker({
     end
 })
 
--- Color Picker đổi màu chữ
 HubTab:AddColorpicker({
     Name = "Đổi Màu Chữ",
     Default = savedTextAndBorderColor,
@@ -595,7 +631,6 @@ HubTab:AddColorpicker({
     end
 })
 
--- Nút làm mới giao diện
 HubTab:AddButton({
     Name = "Làm Mới Giao Diện",
     Icon = "rbxassetid://80452964168019",
@@ -609,7 +644,6 @@ HubTab:AddButton({
     end
 })
 
--- Nút xóa hình nền
 HubTab:AddButton({
     Name = "🗑️ Xóa Hình Nền",
     Icon = "rbxassetid://80452964168019",
@@ -619,11 +653,9 @@ HubTab:AddButton({
     end
 })
 
--- ========== ÁP DỤNG MÀU KHI KHỞI ĐỘNG ==========
 task.wait(1)
 applyHubColor(savedHubColor)
 applyTextAndBorderColor(savedTextAndBorderColor)
 applyHubTransparency(hubTransparency)
 
--- ========== KHỞI TẠO ORIONLIB ==========
 OrionLib:Init()
